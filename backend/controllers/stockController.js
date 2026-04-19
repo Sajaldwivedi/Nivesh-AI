@@ -2,14 +2,14 @@ const Stock = require('../models/Stock');
 
 // Initialize stock data (seed data)
 const sampleStocks = [
-  { symbol: 'AAPL', name: 'Apple Inc.', currentPrice: 150.25 },
-  { symbol: 'GOOGL', name: 'Alphabet Inc.', currentPrice: 2800.5 },
-  { symbol: 'MSFT', name: 'Microsoft Corporation', currentPrice: 320.75 },
-  { symbol: 'AMZN', name: 'Amazon.com Inc.', currentPrice: 3100.0 },
-  { symbol: 'META', name: 'Meta Platforms Inc.', currentPrice: 310.45 },
-  { symbol: 'TSLA', name: 'Tesla Inc.', currentPrice: 240.8 },
-  { symbol: 'NVIDIA', name: 'NVIDIA Corporation', currentPrice: 875.3 },
-  { symbol: 'JPM', name: 'JPMorgan Chase & Co.', currentPrice: 145.6 },
+  { symbol: 'AAPL', name: 'Apple Inc.', currentPrice: 150.25, openPrice: 150.25 },
+  { symbol: 'GOOGL', name: 'Alphabet Inc.', currentPrice: 2800.5, openPrice: 2800.5 },
+  { symbol: 'MSFT', name: 'Microsoft Corporation', currentPrice: 320.75, openPrice: 320.75 },
+  { symbol: 'AMZN', name: 'Amazon.com Inc.', currentPrice: 3100.0, openPrice: 3100.0 },
+  { symbol: 'META', name: 'Meta Platforms Inc.', currentPrice: 310.45, openPrice: 310.45 },
+  { symbol: 'TSLA', name: 'Tesla Inc.', currentPrice: 240.8, openPrice: 240.8 },
+  { symbol: 'NVIDIA', name: 'NVIDIA Corporation', currentPrice: 875.3, openPrice: 875.3 },
+  { symbol: 'JPM', name: 'JPMorgan Chase & Co.', currentPrice: 145.6, openPrice: 145.6 },
 ];
 
 // Initialize stocks

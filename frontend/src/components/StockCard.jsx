@@ -1,8 +1,10 @@
 import React from 'react';
 
 const StockCard = ({ stock, onBuy }) => {
-  const priceChangePercent = ((stock.currentPrice - stock.openPrice) / stock.openPrice * 100).toFixed(2);
-  const isPositive = priceChangePercent >= 0;
+  const priceChangePercent = stock.openPrice && stock.openPrice > 0 
+    ? ((stock.currentPrice - stock.openPrice) / stock.openPrice * 100).toFixed(2) 
+    : '0';
+  const isPositive = parseFloat(priceChangePercent) >= 0;
 
   return (
     <div className="card hover:bg-gray-850 transition">
