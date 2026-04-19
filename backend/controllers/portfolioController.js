@@ -44,8 +44,9 @@ exports.updatePortfolioValues = async (req, res) => {
       const stock = holding.stockId;
       holding.currentValue = holding.quantity * stock.currentPrice;
       holding.gainLoss = holding.currentValue - holding.totalInvested;
+      // Safely calculate percentage - avoid division by zero
       holding.gainLossPercent =
-        holding.totalInvested > 0
+        holding.totalInvested > 0 && holding.totalInvested !== 0
           ? (holding.gainLoss / holding.totalInvested) * 100
           : 0;
     });
@@ -56,10 +57,12 @@ exports.updatePortfolioValues = async (req, res) => {
       0
     );
     portfolio.totalGainLoss = portfolio.totalCurrentValue - portfolio.totalInvested;
-    portfolio.totalGainLossPercent =
-      portfolio.totalInvested > 0
-        ? (portfolio.totalGainLoss / portfolio.totalInvested) * 100
-        : 0;
+    // Safely calculate total percentage - avoid division by zero and Infinity
+    if (portfolio.totalInvested > 0) {
+      portfolio.totalGainLossPercent = (portfolio.totalGainLoss / portfolio.totalInvested) * 100;
+    } else {
+      portfolio.totalGainLossPercent = 0;
+    }
 
     await portfolio.save();
 

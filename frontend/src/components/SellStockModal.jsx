@@ -9,8 +9,14 @@ const SellStockModal = ({ holding, onClose, onSuccess }) => {
   const totalValue = (quantity * holding.stockId.currentPrice).toFixed(2);
 
   const handleSell = async () => {
-    if (quantity <= 0 || quantity > holding.quantity) {
-      toast.error('Please enter a valid quantity');
+    // Validate quantity - ensure it's a valid positive number not exceeding holdings
+    const parsedQty = parseInt(quantity);
+    if (!quantity || isNaN(parsedQty) || parsedQty <= 0) {
+      toast.error('Please enter a valid quantity (positive whole number)');
+      return;
+    }
+    if (parsedQty > holding.quantity) {
+      toast.error(`Cannot sell more than ${holding.quantity} shares`);
       return;
     }
 
@@ -18,7 +24,7 @@ const SellStockModal = ({ holding, onClose, onSuccess }) => {
     try {
       await tradeAPI.sellStock({
         stockId: holding.stockId._id,
-        quantity: parseInt(quantity),
+        quantity: parsedQty,
       });
       toast.success(`Sold ${quantity} shares of ${holding.stockSymbol}!`);
       onSuccess?.();
@@ -53,6 +59,7 @@ const SellStockModal = ({ holding, onClose, onSuccess }) => {
             type="number"
             min="1"
             max={holding.quantity}
+            step="1"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
             className="input-field"

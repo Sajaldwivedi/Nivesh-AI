@@ -9,8 +9,10 @@ const BuyStockModal = ({ stock, onClose, onSuccess }) => {
   const totalCost = (quantity * stock.currentPrice).toFixed(2);
 
   const handleBuy = async () => {
-    if (quantity <= 0) {
-      toast.error('Please enter a valid quantity');
+    // Validate quantity - ensure it's a valid positive number
+    const parsedQty = parseInt(quantity);
+    if (!quantity || isNaN(parsedQty) || parsedQty <= 0) {
+      toast.error('Please enter a valid quantity (positive whole number)');
       return;
     }
 
@@ -18,7 +20,7 @@ const BuyStockModal = ({ stock, onClose, onSuccess }) => {
     try {
       await tradeAPI.buyStock({
         stockId: stock._id,
-        quantity: parseInt(quantity),
+        quantity: parsedQty,
       });
       toast.success(`Bought ${quantity} shares of ${stock.symbol}!`);
       onSuccess?.();
@@ -47,6 +49,7 @@ const BuyStockModal = ({ stock, onClose, onSuccess }) => {
           <input
             type="number"
             min="1"
+            step="1"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
             className="input-field"
