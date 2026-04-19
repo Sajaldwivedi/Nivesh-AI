@@ -30,6 +30,10 @@ export const stockAPI = {
   initializeStocks: () => api.get('/stocks/init'),
   getStockById: (id) => api.get(`/stocks/id/${id}`),
   getStockBySymbol: (symbol) => api.get(`/stocks/symbol/${symbol}`),
+  getQuote: (symbol) => api.get(`/stocks/quote/${symbol}`),
+  getCandles: (symbol, resolution, from, to) =>
+    api.get(`/stocks/candles/${symbol}`, { params: { resolution, from, to } }),
+  searchSymbols: (query) => api.get('/stocks/search', { params: { q: query } }),
   simulatePriceFeed: () => api.post('/stocks/price-feed'),
 };
 

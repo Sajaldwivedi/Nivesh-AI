@@ -71,6 +71,7 @@ app.use((err, req, res, next) => {
 module.exports = { app, server, io };
 
 const PORT = process.env.PORT || 5000;
+const MARKET_TICK_INTERVAL_MS = Number(process.env.MARKET_TICK_INTERVAL_MS || 10000);
 
 const startServer = async () => {
   await connectDB();
@@ -80,7 +81,7 @@ const startServer = async () => {
     stockController.runMarketSimulation(io).catch((error) => {
       console.error('Market simulation tick failed:', error.message);
     });
-  }, 5000);
+  }, MARKET_TICK_INTERVAL_MS);
 
   server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

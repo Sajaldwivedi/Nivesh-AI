@@ -2,6 +2,7 @@ const axios = require('axios');
 
 const FINNHUB_BASE_URL = process.env.FINNHUB_BASE_URL || 'https://finnhub.io/api/v1';
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
+const hasApiKey = () => typeof FINNHUB_API_KEY === 'string' && FINNHUB_API_KEY.trim().length > 0;
 
 if (!FINNHUB_API_KEY) {
   console.warn('⚠️ FINNHUB_API_KEY is not set in .env file');
@@ -18,6 +19,10 @@ const CANDLE_CACHE_TTL = 60000; // 1 minute
 // In-memory cache for search (30-second TTL)
 const searchCache = new Map();
 const SEARCH_CACHE_TTL = 30000; // 30 seconds
+
+// Keep resolved Finnhub symbol per local symbol to avoid repeated fallback probing
+const resolvedSymbolCache = new Map();
+const RESOLVED_SYMBOL_TTL = 6 * 60 * 60 * 1000; // 6 hours
 
 /**
  * Get cached data or return null if expired
@@ -44,12 +49,76 @@ const setInCache = (cache, key, data, ttl) => {
   });
 };
 
+const buildCandidateSymbols = (symbol) => {
+  const base = String(symbol || '').trim().toUpperCase();
+  if (!base) {
+    return [];
+  }
+
+  const candidates = [base];
+  if (!base.includes('.')) {
+    candidates.push(`${base}.NS`);
+    candidates.push(`${base}.BO`);
+  }
+  return candidates;
+};
+
+const isValidQuotePayload = (payload) => {
+  if (!payload || typeof payload !== 'object') {
+    return false;
+  }
+  const c = Number(payload.c || 0);
+  const pc = Number(payload.pc || 0);
+  return c > 0 || pc > 0;
+};
+
+const fetchRawQuote = async (symbol) => {
+  const response = await axios.get(`${FINNHUB_BASE_URL}/quote`, {
+    params: {
+      symbol,
+      token: FINNHUB_API_KEY,
+    },
+  });
+  return response.data;
+};
+
+const resolveFinnhubSymbol = async (inputSymbol) => {
+  const cacheKey = `resolved_${String(inputSymbol || '').toUpperCase()}`;
+  const cached = getFromCache(resolvedSymbolCache, cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const candidates = buildCandidateSymbols(inputSymbol);
+  for (const candidate of candidates) {
+    try {
+      const payload = await fetchRawQuote(candidate);
+      if (isValidQuotePayload(payload)) {
+        setInCache(resolvedSymbolCache, cacheKey, candidate, RESOLVED_SYMBOL_TTL);
+        return candidate;
+      }
+    } catch (error) {
+      // Try next candidate
+    }
+  }
+
+  return null;
+};
+
 /**
  * Fetch real-time quote data for a stock symbol
  * Returns: current price (c), high (h), low (l), open (o), previous close (pc)
  */
 exports.getQuote = async (symbol) => {
   try {
+    if (!hasApiKey()) {
+      return {
+        success: false,
+        error: 'Finnhub API key is not configured',
+        data: null,
+      };
+    }
+
     // Check cache first
     const cacheKey = `quote_${symbol.toUpperCase()}`;
     const cachedData = getFromCache(quoteCache, cacheKey);
@@ -61,13 +130,30 @@ exports.getQuote = async (symbol) => {
       };
     }
 
+    const resolvedSymbol = await resolveFinnhubSymbol(symbol);
+    if (!resolvedSymbol) {
+      return {
+        success: false,
+        error: `No supported Finnhub symbol found for ${symbol.toUpperCase()}`,
+        data: null,
+      };
+    }
+
     // Fetch from Finnhub API
     const response = await axios.get(`${FINNHUB_BASE_URL}/quote`, {
       params: {
-        symbol: symbol.toUpperCase(),
+        symbol: resolvedSymbol,
         token: FINNHUB_API_KEY,
       },
     });
+
+    if (!isValidQuotePayload(response.data)) {
+      return {
+        success: false,
+        error: `No quote data available for ${symbol.toUpperCase()}`,
+        data: null,
+      };
+    }
 
     const { c: currentPrice, h: high, l: low, o: open, pc: previousClose } = response.data;
 
@@ -83,6 +169,7 @@ exports.getQuote = async (symbol) => {
         previousClose && previousClose > 0
           ? ((currentPrice - previousClose) / previousClose) * 100
           : 0,
+      finnhubSymbol: resolvedSymbol,
       timestamp: new Date(),
     };
 
@@ -110,6 +197,14 @@ exports.getQuote = async (symbol) => {
  */
 exports.getCandles = async (symbol, resolution = '5', from, to) => {
   try {
+    if (!hasApiKey()) {
+      return {
+        success: false,
+        error: 'Finnhub API key is not configured',
+        data: null,
+      };
+    }
+
     // Validate inputs
     if (!symbol || !from || !to) {
       return {
@@ -130,10 +225,19 @@ exports.getCandles = async (symbol, resolution = '5', from, to) => {
       };
     }
 
+    const resolvedSymbol = await resolveFinnhubSymbol(symbol);
+    if (!resolvedSymbol) {
+      return {
+        success: false,
+        error: `No supported Finnhub symbol found for ${symbol.toUpperCase()}`,
+        data: null,
+      };
+    }
+
     // Fetch from Finnhub API
     const response = await axios.get(`${FINNHUB_BASE_URL}/stock/candle`, {
       params: {
-        symbol: symbol.toUpperCase(),
+        symbol: resolvedSymbol,
         resolution,
         from,
         to,
@@ -182,6 +286,14 @@ exports.getCandles = async (symbol, resolution = '5', from, to) => {
  */
 exports.searchSymbol = async (query) => {
   try {
+    if (!hasApiKey()) {
+      return {
+        success: false,
+        error: 'Finnhub API key is not configured',
+        data: [],
+      };
+    }
+
     // Validate input
     if (!query || query.trim().length === 0) {
       return {
@@ -243,9 +355,26 @@ exports.searchSymbol = async (query) => {
  */
 exports.getCompanyProfile = async (symbol) => {
   try {
+    if (!hasApiKey()) {
+      return {
+        success: false,
+        error: 'Finnhub API key is not configured',
+        data: null,
+      };
+    }
+
+    const resolvedSymbol = await resolveFinnhubSymbol(symbol);
+    if (!resolvedSymbol) {
+      return {
+        success: false,
+        error: `No supported Finnhub symbol found for ${symbol.toUpperCase()}`,
+        data: null,
+      };
+    }
+
     const response = await axios.get(`${FINNHUB_BASE_URL}/stock/profile2`, {
       params: {
-        symbol: symbol.toUpperCase(),
+        symbol: resolvedSymbol,
         token: FINNHUB_API_KEY,
       },
     });
@@ -299,6 +428,7 @@ module.exports.clearCache = () => {
   quoteCache.clear();
   candleCache.clear();
   searchCache.clear();
+  resolvedSymbolCache.clear();
 };
 
 module.exports.getCacheStats = () => {
@@ -306,5 +436,6 @@ module.exports.getCacheStats = () => {
     quotes: quoteCache.size,
     candles: candleCache.size,
     searches: searchCache.size,
+    resolvedSymbols: resolvedSymbolCache.size,
   };
 };

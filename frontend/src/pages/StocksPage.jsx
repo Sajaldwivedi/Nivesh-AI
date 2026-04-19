@@ -8,6 +8,8 @@ import { usePortfolio } from '../contexts/PortfolioContext';
 import { stockAPI } from '../services/api';
 import { appendCandle, buildSeedCandles, formatCurrency, formatCompactNumber } from '../utils/marketData';
 
+const FAVORITES_STORAGE_KEY = 'niveshai.favoriteStocks';
+
 const StocksPage = () => {
   const { stocks, portfolio, fetchStocks, fetchPortfolio } = usePortfolio();
   const [selectedSymbol, setSelectedSymbol] = useState('');
@@ -15,6 +17,15 @@ const StocksPage = () => {
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [remoteSearchSymbols, setRemoteSearchSymbols] = useState([]);
+  const [favoriteSymbols, setFavoriteSymbols] = useState(() => {
+    try {
+      const saved = localStorage.getItem(FAVORITES_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch (error) {
+      return [];
+    }
+  });
   const [buyStock, setBuyStock] = useState(null);
   const [sellHolding, setSellHolding] = useState(null);
   const [chartData, setChartData] = useState({ candles: [], volumes: [] });
@@ -42,6 +53,27 @@ const StocksPage = () => {
   }, [stocks, selectedSymbol]);
 
   useEffect(() => {
+    if (!searchTerm || searchTerm.trim().length < 2) {
+      setRemoteSearchSymbols([]);
+      return undefined;
+    }
+
+    const debounceId = setTimeout(async () => {
+      try {
+        const response = await stockAPI.searchSymbols(searchTerm.trim());
+        const symbols = (response?.data?.results || []).map((item) =>
+          String(item.symbol || '').toUpperCase().replace('.NS', '').replace('.BO', '')
+        );
+        setRemoteSearchSymbols(symbols);
+      } catch (error) {
+        setRemoteSearchSymbols([]);
+      }
+    }, 350);
+
+    return () => clearTimeout(debounceId);
+  }, [searchTerm]);
+
+  useEffect(() => {
     if (!selectedSymbol) {
       return undefined;
     }
@@ -58,10 +90,50 @@ const StocksPage = () => {
         }
 
         const stock = response.data.stock;
+
+        // Pull a fresh quote from Finnhub-backed backend route to keep detail pane current.
+        try {
+          const quoteResponse = await stockAPI.getQuote(selectedSymbol);
+          const quote = quoteResponse?.data?.quote;
+          if (quote) {
+            stock.currentPrice = quote.currentPrice;
+            stock.openPrice = quote.open;
+            stock.highPrice = quote.high;
+            stock.lowPrice = quote.low;
+          }
+        } catch (error) {
+          // Ignore quote enrichment failures and continue with DB snapshot.
+        }
+
         setSelectedStock(stock);
 
-        const seededSeries = buildSeedCandles(stock);
-        setChartData(seededSeries);
+        const to = Math.floor(Date.now() / 1000);
+        const from = to - 6 * 60 * 60;
+
+        try {
+          const candleResponse = await stockAPI.getCandles(selectedSymbol, '5', from, to);
+          const candles = (candleResponse?.data?.candles || []).map((candle) => ({
+            time: candle.time,
+            open: candle.open,
+            high: candle.high,
+            low: candle.low,
+            close: candle.close,
+          }));
+          const volumes = (candleResponse?.data?.candles || []).map((candle) => ({
+            time: candle.time,
+            value: candle.volume || 0,
+            color: candle.close >= candle.open ? 'rgba(34, 197, 94, 0.45)' : 'rgba(239, 68, 68, 0.45)',
+          }));
+
+          if (candles.length > 0) {
+            setChartData({ candles, volumes });
+          } else {
+            setChartData(buildSeedCandles(stock));
+          }
+        } catch (error) {
+          setChartData(buildSeedCandles(stock));
+        }
+
         lastPriceRef.current = stock.currentPrice;
       } catch (error) {
         toast.error('Failed to load stock details');
@@ -108,13 +180,25 @@ const StocksPage = () => {
   }, [stocks, selectedSymbol, selectedStock]);
 
   const filteredStocks = useMemo(
-    () =>
-      stocks.filter(
+    () => {
+      const localMatches = stocks.filter(
         (stock) =>
           stock.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
           stock.name.toLowerCase().includes(searchTerm.toLowerCase())
-      ),
-    [stocks, searchTerm]
+      );
+
+      if (remoteSearchSymbols.length === 0) {
+        return localMatches;
+      }
+
+      const remoteSet = new Set(remoteSearchSymbols);
+      return stocks.filter(
+        (stock) =>
+          remoteSet.has(stock.symbol.toUpperCase()) ||
+          localMatches.some((match) => match.symbol === stock.symbol)
+      );
+    },
+    [stocks, searchTerm, remoteSearchSymbols]
   );
 
   const selectedHolding = useMemo(() => {
@@ -142,8 +226,24 @@ const StocksPage = () => {
     await fetchStocks();
   };
 
+  const toggleFavorite = (symbol) => {
+    setFavoriteSymbols((previous) => {
+      const exists = previous.includes(symbol);
+      const next = exists ? previous.filter((item) => item !== symbol) : [...previous, symbol];
+      localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const orderedStocks = useMemo(() => {
+    const favoriteSet = new Set(favoriteSymbols);
+    const favorites = filteredStocks.filter((stock) => favoriteSet.has(stock.symbol));
+    const nonFavorites = filteredStocks.filter((stock) => !favoriteSet.has(stock.symbol));
+    return [...favorites, ...nonFavorites];
+  }, [filteredStocks, favoriteSymbols]);
+
   const watchlistItemClass = (symbol) =>
-    `group flex cursor-pointer flex-col gap-1 rounded-2xl border p-4 transition-all duration-300 ${
+    `group relative flex h-28 w-full cursor-pointer items-center rounded-2xl border p-4 transition-all duration-300 hover:scale-[1.01] ${
       selectedSymbol === symbol
         ? 'border-blue-400/60 bg-blue-500/10 shadow-lg shadow-blue-500/10'
         : 'border-slate-700/60 bg-slate-900/40 hover:border-slate-500/70 hover:bg-slate-800/60'
@@ -162,8 +262,8 @@ const StocksPage = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 lg:py-10">
-      <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
+    <div className="container mx-auto px-2 sm:px-3 lg:px-3 py-8 lg:py-10">
+      <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="card sticky top-24 h-fit max-h-[calc(100vh-7rem)] overflow-hidden p-0">
           <div className="border-b border-slate-700/60 p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">Watchlist</p>
@@ -173,17 +273,18 @@ const StocksPage = () => {
                 placeholder="Search by symbol or name"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="input-field pl-4"
+                className="input-field !pl-4 text-center placeholder:text-center"
               />
             </div>
           </div>
 
           <div className="max-h-[calc(100vh-14rem)] overflow-y-auto p-3 pr-2 space-y-3">
-            {filteredStocks.length > 0 ? (
-              filteredStocks.map((stock) => {
+            {orderedStocks.length > 0 ? (
+              orderedStocks.map((stock) => {
                 const delta = stock.openPrice ? stock.currentPrice - stock.openPrice : 0;
                 const deltaPercent = stock.openPrice ? (delta / stock.openPrice) * 100 : 0;
                 const positive = delta >= 0;
+                const isFavorite = favoriteSymbols.includes(stock.symbol);
 
                 return (
                   <button
@@ -192,14 +293,38 @@ const StocksPage = () => {
                     onClick={() => setSelectedSymbol(stock.symbol)}
                     className={watchlistItemClass(stock.symbol)}
                   >
-                    <div className="flex items-start justify-between gap-3 text-left">
-                      <div>
-                        <p className="text-sm font-semibold tracking-wide text-white">{stock.symbol}</p>
-                        <p className="mt-1 text-xs text-slate-400 line-clamp-2">{stock.name}</p>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      aria-label={isFavorite ? `Remove ${stock.symbol} from favorites` : `Add ${stock.symbol} to favorites`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleFavorite(stock.symbol);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          toggleFavorite(stock.symbol);
+                        }
+                      }}
+                      className={`absolute right-3 top-3 rounded-full px-2 py-0.5 text-sm leading-none transition-colors ${
+                        isFavorite ? 'text-amber-300' : 'text-slate-500 hover:text-slate-300'
+                      }`}
+                    >
+                      ★
+                    </span>
+
+                    <div className="flex w-full items-center justify-between gap-2 pr-7 text-left">
+                      <div className="flex-1 min-w-0">
+                        <p className="whitespace-nowrap text-sm font-semibold tracking-wide text-white">{stock.symbol}</p>
+                        <p className="mt-1 truncate text-sm text-slate-400">{stock.name}</p>
                       </div>
-                      <div className={`text-right text-sm font-semibold ${positive ? 'text-green-400' : 'text-red-400'}`}>
-                        <p>{formatCurrency(stock.currentPrice)}</p>
-                        <p className="text-xs opacity-80">{positive ? '+' : ''}{deltaPercent.toFixed(2)}%</p>
+                      <div className={`flex-shrink-0 w-[96px] text-right ${positive ? 'text-green-400' : 'text-red-400'}`}>
+                        <div className="flex flex-col items-end gap-1">
+                        <p className="text-sm font-semibold leading-none">{formatCurrency(stock.currentPrice)}</p>
+                        <p className="text-xs font-semibold leading-none opacity-80">{positive ? '+' : ''}{deltaPercent.toFixed(2)}%</p>
+                        </div>
                       </div>
                     </div>
                   </button>
