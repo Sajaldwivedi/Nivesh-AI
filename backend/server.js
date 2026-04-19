@@ -4,12 +4,14 @@ const cors = require('cors');
 const http = require('http');
 const socketIO = require('socket.io');
 const connectDB = require('./config/db');
+const stockController = require('./controllers/stockController');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
 const stockRoutes = require('./routes/stockRoutes');
 const tradeRoutes = require('./routes/tradeRoutes');
 const portfolioRoutes = require('./routes/portfolioRoutes');
+const finnhubRoutes = require('./routes/finnhubRoutes');
 
 // Initialize app
 const app = express();
@@ -21,8 +23,7 @@ const io = socketIO(server, {
   },
 });
 
-// Connect to MongoDB
-connectDB();
+app.set('io', io);
 
 // Middleware
 app.use(express.json());
@@ -39,6 +40,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/stocks', stockRoutes);
 app.use('/api/trades', tradeRoutes);
 app.use('/api/portfolio', portfolioRoutes);
+app.use('/api/finnhub', finnhubRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
@@ -68,8 +70,24 @@ app.use((err, req, res, next) => {
 // Export io for use in other files
 module.exports = { app, server, io };
 
-// Start server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+
+const startServer = async () => {
+  await connectDB();
+  await stockController.ensureStocksSeeded();
+
+  setInterval(() => {
+    stockController.runMarketSimulation(io).catch((error) => {
+      console.error('Market simulation tick failed:', error.message);
+    });
+  }, 5000);
+
+  server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+};
+
+startServer().catch((error) => {
+  console.error('Failed to start server:', error.message);
+  process.exit(1);
 });

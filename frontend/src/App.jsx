@@ -43,9 +43,7 @@ function AppContent() {
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <PortfolioProvider>
-                    <DashboardPage />
-                  </PortfolioProvider>
+                  <DashboardPage />
                 </ProtectedRoute>
               }
             />
@@ -53,9 +51,7 @@ function AppContent() {
               path="/stocks"
               element={
                 <ProtectedRoute>
-                  <PortfolioProvider>
-                    <StocksPage />
-                  </PortfolioProvider>
+                  <StocksPage />
                 </ProtectedRoute>
               }
             />
@@ -63,9 +59,7 @@ function AppContent() {
               path="/portfolio"
               element={
                 <ProtectedRoute>
-                  <PortfolioProvider>
-                    <PortfolioPage />
-                  </PortfolioProvider>
+                  <PortfolioPage />
                 </ProtectedRoute>
               }
             />
@@ -101,7 +95,9 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <PortfolioProvider>
+        <AppContent />
+      </PortfolioProvider>
     </AuthProvider>
   );
 }

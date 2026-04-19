@@ -2,25 +2,95 @@ const Stock = require('../models/Stock');
 
 // Initialize stock data (seed data)
 const sampleStocks = [
-  { symbol: 'AAPL', name: 'Apple Inc.', currentPrice: 150.25, openPrice: 150.25 },
-  { symbol: 'GOOGL', name: 'Alphabet Inc.', currentPrice: 2800.5, openPrice: 2800.5 },
-  { symbol: 'MSFT', name: 'Microsoft Corporation', currentPrice: 320.75, openPrice: 320.75 },
-  { symbol: 'AMZN', name: 'Amazon.com Inc.', currentPrice: 3100.0, openPrice: 3100.0 },
-  { symbol: 'META', name: 'Meta Platforms Inc.', currentPrice: 310.45, openPrice: 310.45 },
-  { symbol: 'TSLA', name: 'Tesla Inc.', currentPrice: 240.8, openPrice: 240.8 },
-  { symbol: 'NVIDIA', name: 'NVIDIA Corporation', currentPrice: 875.3, openPrice: 875.3 },
-  { symbol: 'JPM', name: 'JPMorgan Chase & Co.', currentPrice: 145.6, openPrice: 145.6 },
+  { symbol: 'ZEEL', name: 'Zee Entertainment Enterprises Ltd.', currentPrice: 307.0, openPrice: 307.0 },
+  { symbol: 'RELIANCE', name: 'Reliance Industries Ltd.', currentPrice: 3018.25, openPrice: 3018.25 },
+  { symbol: 'BRITANNIA', name: 'Britannia Industries Ltd.', currentPrice: 4978.4, openPrice: 4978.4 },
+  { symbol: 'POWERGRID', name: 'Power Grid Corporation of India Ltd.', currentPrice: 287.6, openPrice: 287.6 },
+  { symbol: 'ADANIPORTS', name: 'Adani Ports and SEZ Ltd.', currentPrice: 1386.15, openPrice: 1386.15 },
+  { symbol: 'MOTHERSON', name: 'Samvardhana Motherson International Ltd.', currentPrice: 194.35, openPrice: 194.35 },
+  { symbol: 'TATASTEEL', name: 'Tata Steel Ltd.', currentPrice: 162.8, openPrice: 162.8 },
+  { symbol: 'GODREJCP', name: 'Godrej Consumer Products Ltd.', currentPrice: 1271.9, openPrice: 1271.9 },
+  { symbol: 'INFY', name: 'Infosys Ltd.', currentPrice: 1718.2, openPrice: 1718.2 },
+  { symbol: 'TCS', name: 'Tata Consultancy Services Ltd.', currentPrice: 3912.6, openPrice: 3912.6 },
 ];
+
+const buildSeedStock = (stock) => ({
+  ...stock,
+  highPrice: stock.highPrice || parseFloat((stock.currentPrice * 1.015).toFixed(2)),
+  lowPrice: stock.lowPrice || parseFloat((stock.currentPrice * 0.985).toFixed(2)),
+  volume: stock.volume || Math.floor(250000 + Math.random() * 500000),
+  marketCap: stock.marketCap || 'N/A',
+  priceHistory:
+    stock.priceHistory && stock.priceHistory.length > 0
+      ? stock.priceHistory
+      : [
+          {
+            price: stock.currentPrice,
+            timestamp: new Date(Date.now() - 1000 * 60 * 30),
+          },
+        ],
+  lastUpdated: new Date(),
+});
+
+const ensureStocksSeeded = async () => {
+  const existingStocks = await Stock.countDocuments();
+  if (existingStocks > 0) {
+    return Stock.find();
+  }
+
+  return Stock.insertMany(sampleStocks.map(buildSeedStock));
+};
+
+const generateMarketTick = (stock) => {
+  const percentChange = (Math.random() - 0.5) * 0.06;
+  const nextPrice = Math.max(1, stock.currentPrice * (1 + percentChange));
+  const formattedPrice = parseFloat(nextPrice.toFixed(2));
+  const nextHigh = Math.max(stock.highPrice || formattedPrice, formattedPrice);
+  const nextLow = Math.min(stock.lowPrice || formattedPrice, formattedPrice);
+  const nextVolume = (stock.volume || 0) + Math.floor(15000 + Math.random() * 40000);
+
+  return {
+    currentPrice: formattedPrice,
+    highPrice: parseFloat(nextHigh.toFixed(2)),
+    lowPrice: parseFloat(nextLow.toFixed(2)),
+    volume: nextVolume,
+    lastUpdated: new Date(),
+  };
+};
+
+const simulateMarketTick = async () => {
+  const stocks = await Stock.find();
+  if (stocks.length === 0) {
+    return [];
+  }
+
+  const updatedStocks = await Promise.all(
+    stocks.map(async (stock) => {
+      const nextState = generateMarketTick(stock);
+
+      return Stock.findByIdAndUpdate(
+        stock._id,
+        {
+          ...nextState,
+          $push: {
+            priceHistory: {
+              price: nextState.currentPrice,
+              timestamp: new Date(),
+            },
+          },
+        },
+        { new: true }
+      );
+    })
+  );
+
+  return updatedStocks;
+};
 
 // Initialize stocks
 exports.initializeStocks = async (req, res) => {
   try {
-    const existingStocks = await Stock.countDocuments();
-    if (existingStocks > 0) {
-      return res.status(200).json({ message: 'Stocks already initialized' });
-    }
-
-    const stocks = await Stock.insertMany(sampleStocks);
+    const stocks = await ensureStocksSeeded();
     res.status(201).json({
       message: 'Stocks initialized successfully',
       stocks,
@@ -33,7 +103,7 @@ exports.initializeStocks = async (req, res) => {
 // Get all stocks
 exports.getAllStocks = async (req, res) => {
   try {
-    const stocks = await Stock.find().select('-priceHistory');
+    const stocks = await Stock.find().select('-priceHistory').sort({ symbol: 1 });
     res.status(200).json({ stocks });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -74,19 +144,22 @@ exports.updateStockPrice = async (req, res) => {
     const { id } = req.params;
     const { price } = req.body;
 
+    const existingStock = await Stock.findById(id);
+    if (!existingStock) {
+      return res.status(404).json({ message: 'Stock not found' });
+    }
+
     const stock = await Stock.findByIdAndUpdate(
       id,
       {
         currentPrice: price,
+        highPrice: Math.max(price, existingStock.highPrice || price),
+        lowPrice: Math.min(price, existingStock.lowPrice || price),
         lastUpdated: new Date(),
         $push: { priceHistory: { price, timestamp: new Date() } },
       },
       { new: true }
     );
-
-    if (!stock) {
-      return res.status(404).json({ message: 'Stock not found' });
-    }
 
     res.status(200).json({ message: 'Stock price updated', stock });
   } catch (error) {
@@ -97,32 +170,11 @@ exports.updateStockPrice = async (req, res) => {
 // Simulate price movement (for real-time updates)
 exports.simulatePriceFeed = async (req, res) => {
   try {
-    const stocks = await Stock.find();
+    const updatedStocks = await simulateMarketTick();
+    const io = req.app.get('io');
 
-    const updatedStocks = await Promise.all(
-      stocks.map(async (stock) => {
-        // Random price movement between -5% to +5%
-        const percentChange = (Math.random() - 0.5) * 0.1;
-        const newPrice = stock.currentPrice * (1 + percentChange);
-
-        return await Stock.findByIdAndUpdate(
-          stock._id,
-          {
-            currentPrice: parseFloat(newPrice.toFixed(2)),
-            lastUpdated: new Date(),
-            $push: { priceHistory: { price: newPrice, timestamp: new Date() } },
-          },
-          { new: true }
-        );
-      })
-    );
-
-    // Broadcast updated prices to all connected WebSocket clients
-    try {
-      const { io } = require('../server');
+    if (io) {
       io.emit('stock-price-update', updatedStocks);
-    } catch (socketError) {
-      console.log('WebSocket broadcast note: Could not emit prices');
     }
 
     res.status(200).json({
@@ -132,4 +184,15 @@ exports.simulatePriceFeed = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+};
+
+exports.ensureStocksSeeded = ensureStocksSeeded;
+exports.runMarketSimulation = async (io) => {
+  const updatedStocks = await simulateMarketTick();
+
+  if (io && updatedStocks.length > 0) {
+    io.emit('stock-price-update', updatedStocks);
+  }
+
+  return updatedStocks;
 };

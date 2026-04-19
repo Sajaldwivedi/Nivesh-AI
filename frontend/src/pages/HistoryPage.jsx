@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import Header from '../components/Header';
+import React, { useEffect, useMemo, useState } from 'react';
+
 import { tradeAPI } from '../services/api';
+import { formatCurrency } from '../utils/marketData';
 
 const HistoryPage = () => {
   const [transactions, setTransactions] = useState([]);
@@ -29,68 +30,87 @@ const HistoryPage = () => {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 
+  const summary = useMemo(() => {
+    const buyCount = transactions.filter((transaction) => transaction.type === 'BUY').length;
+    const sellCount = transactions.filter((transaction) => transaction.type === 'SELL').length;
+    const turnover = transactions.reduce((sum, transaction) => sum + transaction.totalAmount, 0);
+
+    return { buyCount, sellCount, turnover };
+  }, [transactions]);
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-gray-400">Loading transaction history...</p>
+      <div className="flex min-h-screen items-center justify-center pt-20">
+        <div className="card w-full max-w-md animate-pulse space-y-4">
+          <div className="h-4 w-44 rounded bg-slate-700/70" />
+          <div className="h-10 rounded-xl bg-slate-700/50" />
+          <div className="h-64 rounded-3xl bg-slate-700/30" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-12">
-      <Header
-        title="Transaction History"
-        subtitle="View all your stock trades"
-      />
+    <div className="container mx-auto px-4 py-8 lg:py-10">
+      <div className="grid gap-4 md:grid-cols-3 mb-8">
+        <div className="card">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">Buy Orders</p>
+          <p className="mt-3 text-3xl font-black text-green-400">{summary.buyCount}</p>
+        </div>
+        <div className="card">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">Sell Orders</p>
+          <p className="mt-3 text-3xl font-black text-red-400">{summary.sellCount}</p>
+        </div>
+        <div className="card">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">Turnover</p>
+          <p className="mt-3 text-3xl font-black text-blue-400">{formatCurrency(summary.turnover)}</p>
+        </div>
+      </div>
 
-      {/* Transactions Table */}
-      <div className="card">
+      <div className="card p-0 overflow-hidden">
         {transactions.length > 0 ? (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-700">
-                    <th className="text-left py-3 px-4">Date & Time</th>
-                    <th className="text-left py-3 px-4">Stock</th>
-                    <th className="text-left py-3 px-4">Type</th>
-                    <th className="text-right py-3 px-4">Quantity</th>
-                    <th className="text-right py-3 px-4">Price/Unit</th>
-                    <th className="text-right py-3 px-4">Total Amount</th>
+              <table className="min-w-full">
+                <thead className="bg-slate-900/70">
+                  <tr className="border-b border-slate-700/60 text-left text-xs uppercase tracking-[0.28em] text-slate-400">
+                    <th className="px-5 py-4 font-semibold">Date</th>
+                    <th className="px-5 py-4 font-semibold">Stock</th>
+                    <th className="px-5 py-4 font-semibold">Type</th>
+                    <th className="px-5 py-4 text-right font-semibold">Qty</th>
+                    <th className="px-5 py-4 text-right font-semibold">Price</th>
+                    <th className="px-5 py-4 text-right font-semibold">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {transactions.map((transaction) => (
                     <tr
                       key={transaction._id}
-                      className="border-b border-gray-800 hover:bg-gray-800"
+                      className="border-b border-slate-800/70 text-slate-200 transition-colors duration-200 hover:bg-slate-800/40"
                     >
-                      <td className="py-3 px-4 text-sm">
+                      <td className="px-5 py-4 text-sm text-slate-300">
                         {formatDate(transaction.createdAt)}
                       </td>
-                      <td className="py-3 px-4 font-semibold">
+                      <td className="px-5 py-4 font-semibold text-white">
                         {transaction.stockSymbol}
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="px-5 py-4">
                         <span
-                          className={`px-2 py-1 rounded text-sm font-medium ${
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold tracking-wide ${
                             transaction.type === 'BUY'
-                              ? 'bg-green-900 text-green-300'
-                              : 'bg-red-900 text-red-300'
+                              ? 'bg-green-500/15 text-green-300'
+                              : 'bg-red-500/15 text-red-300'
                           }`}
                         >
                           {transaction.type}
                         </span>
                       </td>
-                      <td className="text-right py-3 px-4">
-                        {transaction.quantity}
+                      <td className="px-5 py-4 text-right">{transaction.quantity}</td>
+                      <td className="px-5 py-4 text-right text-slate-300">
+                        {formatCurrency(transaction.pricePerUnit)}
                       </td>
-                      <td className="text-right py-3 px-4">
-                        ₹{transaction.pricePerUnit.toFixed(2)}
-                      </td>
-                      <td className="text-right py-3 px-4 font-semibold">
-                        ₹{transaction.totalAmount.toFixed(2)}
+                      <td className="px-5 py-4 text-right font-semibold text-white">
+                        {formatCurrency(transaction.totalAmount)}
                       </td>
                     </tr>
                   ))}
@@ -98,29 +118,28 @@ const HistoryPage = () => {
               </table>
             </div>
 
-            {/* Pagination */}
-            <div className="flex justify-between items-center mt-6 pt-6 border-t border-gray-700">
+            <div className="flex flex-col gap-4 border-t border-slate-700/60 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
               <button
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page === 1}
-                className="btn btn-secondary disabled:opacity-50"
+                className="btn btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Previous
               </button>
-              <span className="text-gray-400">
+              <span className="text-sm text-slate-400">
                 Page {page} of {totalPages}
               </span>
               <button
                 onClick={() => setPage(Math.min(totalPages, page + 1))}
                 disabled={page === totalPages}
-                className="btn btn-secondary disabled:opacity-50"
+                className="btn btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Next
               </button>
             </div>
           </>
         ) : (
-          <p className="text-gray-400 text-center py-8">
+          <p className="px-5 py-10 text-center text-slate-400">
             No transactions yet. Start trading to see your history!
           </p>
         )}
