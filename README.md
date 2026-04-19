@@ -262,3 +262,6 @@ This project is open source and available for educational purposes.
 ## Support
 
 For issues or questions, please check the README files in the backend and frontend directories for more detailed information.
+
+
+
