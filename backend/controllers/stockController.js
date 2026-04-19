@@ -117,6 +117,14 @@ exports.simulatePriceFeed = async (req, res) => {
       })
     );
 
+    // Broadcast updated prices to all connected WebSocket clients
+    try {
+      const { io } = require('../server');
+      io.emit('stock-price-update', updatedStocks);
+    } catch (socketError) {
+      console.log('WebSocket broadcast note: Could not emit prices');
+    }
+
     res.status(200).json({
       message: 'Stock prices updated',
       stocks: updatedStocks,

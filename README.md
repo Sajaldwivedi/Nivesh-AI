@@ -113,12 +113,17 @@ Nivesh AI/
    cd frontend
    ```
 
-2. Install dependencies:
+2. Create `.env` file with API configuration:
+   ```
+   VITE_API_BASE_URL=http://localhost:5000/api
+   ```
+
+3. Install dependencies:
    ```bash
    npm install
    ```
 
-3. Start the development server:
+4. Start the development server:
    ```bash
    npm run dev
    ```
@@ -173,6 +178,26 @@ Nivesh AI/
 - Interactive charts with Recharts
 - Modal dialogs for trading
 - Loading states
+
+### Real-Time Updates ✅
+- **WebSocket integration** for live stock price updates
+- Prices auto-update every 10 seconds across all connected clients
+- No page refresh needed for latest data
+- Multi-user price synchronization
+
+## Recent Improvements
+
+### Bug Fixes ✅
+- Fixed division by zero errors in portfolio calculations
+- Added robust NaN validation for quantity inputs
+- Implemented race condition safety checks in transactions
+- Added comprehensive zero-value guards in percentage calculations
+- Improved error messages for better user feedback
+
+### Features Added ✅
+- **Real-time WebSocket support**: Stock prices broadcast to all connected users automatically
+- Configurable `.env` for frontend API URL
+- Environment-agnostic deployment setup
 
 ## API Endpoints Summary
 
@@ -241,6 +266,11 @@ Nivesh AI/
 - Portfolio export
 
 ## Troubleshooting
+
+**Frontend API Connection Error:**
+- Ensure `VITE_API_BASE_URL` in `frontend/.env` matches your backend URL
+- Default is `http://localhost:5000/api`
+- For different ports/servers, update the `.env` file accordingly
 
 **MongoDB Connection Error:**
 - Ensure MongoDB is running locally or update `MONGODB_URI` in `.env`
