@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import BrandLogo from './BrandLogo';
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -31,12 +32,9 @@ const Navbar = () => {
         <div className="flex h-20 items-center justify-between gap-6">
           <Link
             to="/"
-            className="flex items-center gap-3 text-2xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent transition-transform duration-300 hover:scale-[1.03]"
+            className="transition-transform duration-300 hover:scale-[1.02]"
           >
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-500/30">
-              N
-            </span>
-            <span>NiveshAI</span>
+            <BrandLogo />
           </Link>
 
           <div className="hidden lg:flex items-center gap-8 text-sm font-medium">

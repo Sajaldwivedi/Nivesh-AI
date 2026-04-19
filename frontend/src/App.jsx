@@ -34,7 +34,10 @@ function AppContent() {
         <main className="pt-20">
           <Routes>
             {/* Public Routes */}
-            <Route path="/" element={<HomePage />} />
+            <Route
+              path="/"
+              element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <HomePage />}
+            />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/login" element={<LoginPage />} />
 
@@ -73,7 +76,7 @@ function AppContent() {
             />
 
             {/* Catch all */}
-            <Route path="*" element={<Navigate to="/" />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
         <ToastContainer

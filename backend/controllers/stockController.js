@@ -89,6 +89,29 @@ const generateMarketTick = (stock) => {
   };
 };
 
+const buildFallbackQuote = (stock) => {
+  const currentPrice = Number(stock.currentPrice || 0);
+  const openPrice = Number(stock.openPrice || currentPrice || 0);
+  const highPrice = Number(stock.highPrice || currentPrice || 0);
+  const lowPrice = Number(stock.lowPrice || currentPrice || 0);
+  const previousClose = openPrice || currentPrice || 0;
+
+  return {
+    symbol: stock.symbol,
+    currentPrice,
+    high: highPrice,
+    low: lowPrice,
+    open: openPrice,
+    previousClose,
+    change: currentPrice - previousClose,
+    changePercent:
+      previousClose > 0 ? ((currentPrice - previousClose) / previousClose) * 100 : 0,
+    finnhubSymbol: null,
+    timestamp: new Date(),
+    source: 'fallback',
+  };
+};
+
 const simulateMarketTick = async () => {
   const stocks = await Stock.find();
   if (stocks.length === 0) {
@@ -228,15 +251,27 @@ exports.getQuote = async (req, res) => {
     }
 
     const result = await finnhubService.getQuote(symbol);
-    if (!result.success) {
-      return res.status(400).json({
-        message: result.error || 'Failed to fetch quote',
+    if (result.success && result.data) {
+      return res.status(200).json({
+        quote: result.data,
+        source: result.source,
       });
     }
 
+    const stock = await Stock.findOne({ symbol: symbol.toUpperCase() });
+    if (!stock) {
+      return res.status(404).json({
+        message: result.error || 'Stock not found for fallback quote',
+      });
+    }
+
+    const fallbackQuote = buildFallbackQuote(stock);
+    console.warn(`Finnhub quote fallback used for ${symbol.toUpperCase()}: ${result.error || 'unknown error'}`);
+
     return res.status(200).json({
-      quote: result.data,
-      source: result.source,
+      quote: fallbackQuote,
+      source: 'fallback',
+      message: 'Finnhub quote unavailable, using local stock data',
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -256,15 +291,37 @@ exports.getCandles = async (req, res) => {
     }
 
     const result = await finnhubService.getCandles(symbol, resolution, from, to);
-    if (!result.success) {
-      return res.status(400).json({ message: result.error || 'Failed to fetch candles' });
+    if (result.success && result.data) {
+      return res.status(200).json({
+        candles: result.data,
+        source: result.source,
+        symbol: symbol.toUpperCase(),
+        resolution,
+      });
     }
 
+    const stock = await Stock.findOne({ symbol: symbol.toUpperCase() });
+    if (!stock) {
+      return res.status(404).json({
+        message: result.error || 'Stock not found for fallback candles',
+      });
+    }
+
+    console.warn(`Finnhub candle fallback used for ${symbol.toUpperCase()}: ${result.error || 'unknown error'}`);
+
     return res.status(200).json({
-      candles: result.data,
-      source: result.source,
+      candles: [],
+      source: 'fallback',
       symbol: symbol.toUpperCase(),
       resolution,
+      message: 'Finnhub candles unavailable, using local seeded chart on frontend',
+      stock: {
+        symbol: stock.symbol,
+        currentPrice: stock.currentPrice,
+        openPrice: stock.openPrice,
+        highPrice: stock.highPrice,
+        lowPrice: stock.lowPrice,
+      },
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
