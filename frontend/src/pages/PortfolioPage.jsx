@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { toast, ToastContainer } from 'react-toastify';
 import Header from '../components/Header';
 import PortfolioCard from '../components/PortfolioCard';
 import SellStockModal from '../components/SellStockModal';
@@ -33,7 +32,6 @@ const PortfolioPage = () => {
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <ToastContainer />
       <Header
         title="My Portfolio"
         subtitle="View and manage your stock holdings"

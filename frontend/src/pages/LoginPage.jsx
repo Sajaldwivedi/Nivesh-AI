@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 
 const LoginPage = () => {
@@ -38,7 +38,6 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
-      <ToastContainer />
       <div className="w-full max-w-md">
         <div className="card">
           <h1 className="text-3xl font-bold text-white mb-2 text-center">

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import Header from '../components/Header';
 import StockCard from '../components/StockCard';
 import BuyStockModal from '../components/BuyStockModal';
@@ -63,7 +63,6 @@ const StocksPage = () => {
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <ToastContainer />
       <Header
         title="Stock Market"
         subtitle="Browse and buy stocks in real-time"
