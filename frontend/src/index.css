@@ -24,38 +24,89 @@ body {
   padding: 0 20px;
 }
 
+/* Premium Button Styles */
 .btn {
-  @apply px-4 py-2 rounded font-medium transition duration-300 ease-in-out;
+  @apply px-6 py-3 rounded-lg font-semibold transition-all duration-300 ease-in-out 
+    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900
+    transform hover:scale-105 active:scale-95 cursor-pointer;
 }
 
 .btn-primary {
-  @apply btn bg-blue-600 hover:bg-blue-700 text-white;
+  @apply btn bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 
+    hover:to-blue-600 text-white shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50;
 }
 
 .btn-secondary {
-  @apply btn bg-gray-700 hover:bg-gray-600 text-white;
+  @apply btn bg-gradient-to-r from-slate-700 to-slate-600 hover:from-slate-600 
+    hover:to-slate-500 text-white border border-slate-600 hover:border-slate-500;
 }
 
 .btn-success {
-  @apply btn bg-green-600 hover:bg-green-700 text-white;
+  @apply btn bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 
+    hover:to-green-600 text-white shadow-lg shadow-green-500/30 hover:shadow-green-500/50;
 }
 
 .btn-danger {
-  @apply btn bg-red-600 hover:bg-red-700 text-white;
+  @apply btn bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 
+    hover:to-red-600 text-white shadow-lg shadow-red-500/30 hover:shadow-red-500/50;
 }
 
+/* Premium Card Styles with Glassmorphism */
 .card {
-  @apply bg-gray-900 rounded-lg shadow-lg p-6 border border-gray-800;
+  @apply bg-gradient-to-br from-slate-800/40 to-slate-900/40 backdrop-blur-xl 
+    rounded-2xl p-6 border border-slate-700/50 shadow-2xl 
+    hover:border-slate-600/50 hover:shadow-slate-500/20
+    transition-all duration-300;
+}
+
+.card-premium {
+  @apply card shadow-2xl hover:shadow-slate-400/20;
+}
+
+/* Glassmorphism effect */
+.glass {
+  @apply backdrop-blur-2xl bg-gradient-to-br from-slate-800/30 to-slate-900/30 
+    border border-slate-700/50 rounded-2xl transition-all duration-300
+    hover:border-slate-600/70 hover:bg-slate-800/40;
 }
 
 .input-field {
-  @apply w-full px-4 py-2 rounded bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500;
+  @apply w-full px-4 py-2 rounded-lg bg-slate-800/50 border border-slate-700 text-white 
+    placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 
+    focus:ring-blue-500/20 transition-all duration-300 backdrop-blur-sm pl-12;
 }
 
 .text-success {
-  @apply text-green-500;
+  @apply text-green-400;
 }
 
 .text-danger {
-  @apply text-red-500;
+  @apply text-red-400;
+}
+
+/* Premium gradient backgrounds */
+.gradient-primary {
+  @apply bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20;
+}
+
+/* Glow effect for premium elements */
+.glow-primary {
+  @apply shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-shadow;
+}
+
+.glow-success {
+  @apply shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transition-shadow;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Line clamp utility */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

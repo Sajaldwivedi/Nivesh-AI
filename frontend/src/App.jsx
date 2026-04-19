@@ -31,55 +31,57 @@ function AppContent() {
     <Router>
       <div className="bg-slate-900 min-h-screen">
         <Navbar />
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/login" element={<LoginPage />} />
+        <main className="pt-20">
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/login" element={<LoginPage />} />
 
-          {/* Protected Routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <PortfolioProvider>
-                  <DashboardPage />
-                </PortfolioProvider>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/stocks"
-            element={
-              <ProtectedRoute>
-                <PortfolioProvider>
-                  <StocksPage />
-                </PortfolioProvider>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/portfolio"
-            element={
-              <ProtectedRoute>
-                <PortfolioProvider>
-                  <PortfolioPage />
-                </PortfolioProvider>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/history"
-            element={
-              <ProtectedRoute>
-                <HistoryPage />
-              </ProtectedRoute>
-            }
-          />
+            {/* Protected Routes */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <PortfolioProvider>
+                    <DashboardPage />
+                  </PortfolioProvider>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/stocks"
+              element={
+                <ProtectedRoute>
+                  <PortfolioProvider>
+                    <StocksPage />
+                  </PortfolioProvider>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/portfolio"
+              element={
+                <ProtectedRoute>
+                  <PortfolioProvider>
+                    <PortfolioPage />
+                  </PortfolioProvider>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <ProtectedRoute>
+                  <HistoryPage />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Catch all */}
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
+            {/* Catch all */}
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </main>
         <ToastContainer
           position="bottom-right"
           autoClose={3000}
